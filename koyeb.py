@@ -22,9 +22,9 @@ session = requests.Session()
 # 内置Python环境变量[纯Python环境可启用]
 #os.environ['KOY_EB'] = "aaa-bbb"
 
-def get_time_stamp(result):
-    utct_date = datetime.datetime.strptime(result, "%Y-%m-%dT%H:%M:%S.%f%z")
-    local_date = utct_date + datetime.timedelta(hours=8)
+def get_time_stamp(result, hour_zone):
+    utct_date = datetime.datetime.strptime(result[:21], "%Y-%m-%dT%H:%M:%S.%f")
+    local_date = utct_date + datetime.timedelta(hours=8-hour_zone)
     local_date_srt = datetime.datetime.strftime(local_date, "%Y-%m-%d %H:%M:%S")
     return local_date_srt
 
@@ -110,7 +110,8 @@ def login(usr, pwd):
             info = resp.json()
             List.append(f"账号`{info.get('user').get('name')}`登陆成功")
             List.append(f"ID：{info.get('user').get('id')}")
-            List.append(f"注册日期：{get_time_stamp(info.get('user').get('created_at'))}")
+            List.append(f"注册日期：{get_time_stamp(info.get('user').get('created_at'), 0)}")
+            List.append(f"当前登录日期：{get_time_stamp(status.get('token').get('expires_at'), 24)}")
             lastlogin_url = 'https://app.koyeb.com/v1/activities?offset=0&limit=20'
             lastlogin_head = {
                 'authorization': f'Bearer {token}',
@@ -118,18 +119,14 @@ def login(usr, pwd):
                 'user-agent': 'Mozilla/5.0 (Linux; Android 10; PBEM00) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/93.0.4577.52 Mobile Safari/537.36'
 
             }
-            time.sleep(7)
+            #time.sleep(7)
             resg = session.get(lastlogin_url, headers=lastlogin_head)
             if resg.status_code == 200:
                 lastlogin = resg.json()
-                j = 0
                 for i in range(len(lastlogin.get('activities'))):
-                    if lastlogin.get('activities')[i].get('object').get('name') == "console" and j < 2:
-                        if lastlogin.get('count') > 1 and j == 1:
-                            List.append(f"上次登录日期：{get_time_stamp(lastlogin.get('activities')[i].get('created_at'))}")
-                        else:
-                            List.append(f"当前登录日期：{get_time_stamp(lastlogin.get('activities')[i].get('created_at'))}")
-                        j += 1
+                    if lastlogin.get('activities')[i].get('object').get('name') == "console" and lastlogin.get('count') > 1: 
+                            List.append(f"上次登录日期：{get_time_stamp(lastlogin.get('activities')[i].get('created_at'), 0)}")
+                    break
             else:
                 print(resg.text)
         else:
